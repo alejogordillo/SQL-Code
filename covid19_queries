@@ -1,0 +1,395 @@
+SELECT   
+    *
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+ORDER BY 
+   location,
+    date
+ 
+---Filtering continents as location
+---When a continent is a location, the continent column is null
+
+SELECT   
+    *
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is not null 
+
+ORDER BY 
+   location,
+    date
+
+-- SELECT 
+--     *
+-- FROM 
+--     `portfolio-326009.Covid19.covid_vaccinations`
+-- ORDER BY 
+--     location, (can use 3,4 for column location instead of column name)
+--     date
+ 
+-- Selecting data to be used
+ 
+ 
+SELECT 
+    location,
+    date,
+    total_cases,
+    new_cases,
+    total_deaths,
+    population,
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+ORDER BY 
+    1,2
+ 
+-- Looking at Total Cases vs Total Deaths
+ 
+SELECT 
+    location,
+    date,
+    total_cases,
+    total_deaths,
+    round((total_deaths/total_cases)*100,2) AS death_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+ORDER BY 
+    1,2
+ 
+-- looking to filter by location
+-- likelihood of dying it you contract covid in you country (general population)
+ 
+SELECT 
+    location,
+    date,
+    total_cases,
+    total_deaths,
+    round((total_deaths/total_cases)*100,2) AS death_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    location LIKE '%States' --Like allows to use '%' to find values containing 'States'
+ORDER BY 
+    date
+ 
+-- Looking at Total Cases vs Population
+ 
+SELECT 
+    location,
+    date,
+    total_cases,
+    round((total_cases/population)*100,2) AS cases_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    location LIKE '%States' --Like allows to use '%' to find values containing 'States'
+ORDER BY 
+    1,2
+ 
+--- Finding countries with highest infection rate
+ 
+SELECT 
+    location,
+    MAX(total_cases) AS all_cases,
+    MAX(round((total_cases/population)*100,2)) AS cases_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+GROUP BY 
+    location
+ORDER BY 
+    3 DESC
+ 
+ ---Finding countries with highest death count percapita
+
+ SELECT 
+    location,
+    --MAX(population) As Pop,
+    MAX(total_deaths) AS all_deaths, --if total_deaths was not an INT, then use cast(total_deaths as int64)
+    MAX(round((total_deaths/population)*100,2)) AS deaths_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is not null 
+GROUP BY 
+    location
+ORDER BY 
+    3 DESC
+ 
+ -- Same but by continent
+
+ SELECT 
+    continent,
+    ---MAX(population) As Pop,
+    MAX(total_deaths) AS all_deaths, --if total_deaths was not an INT, then use cast(total_deaths as int64)
+    MAX(round((total_deaths/population)*100,2)) AS deaths_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is not null 
+GROUP BY 
+    continent
+ORDER BY 
+    3 DESC
+
+--- but world is higher than sum of all.
+--- it is counting countries in the EU twice.
+
+ SELECT 
+    location,
+    ---MAX(population) As Pop,
+    MAX(total_deaths) AS all_deaths, --if total_deaths was not an INT, then use cast(total_deaths as int64)
+    MAX(round((total_deaths/population)*100,2)) AS deaths_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is null 
+GROUP BY 
+    location
+ORDER BY 
+    3 DESC
+
+-- deleting European Union double counting and deleting "international"
+
+ SELECT 
+    location,
+    ---MAX(population) As Pop,
+    MAX(total_deaths) AS all_deaths, --if total_deaths was not an INT, then use cast(total_deaths as int64)
+    MAX(round((total_deaths/population)*100,2)) AS deaths_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is null 
+    and
+    Not location = 'European Union'
+    and 
+    Not location = 'International'
+GROUP BY 
+    location
+ORDER BY 
+    3 DESC
+
+
+ --- showing the continents with the highest death count   
+
+  SELECT 
+    location,
+    ---MAX(population) As Pop,
+    MAX(total_deaths) AS all_deaths, --if total_deaths was not an INT, then use cast(total_deaths as int64)
+    MAX(round((total_deaths/population)*100,2)) AS deaths_percentage
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is null 
+    and
+    Not location = 'European Union'
+    and 
+    Not location = 'International'
+    and 
+    Not location = 'World'
+GROUP BY 
+    location
+ORDER BY 
+    2 DESC
+
+
+ ------------------
+ ------------------
+
+
+-- GLOBAL NUMBERS --
+
+SELECT 
+    date,
+    SUM(new_cases) AS total_new_cases,
+    SUM(new_deaths) AS total_new_deaths,
+    round((SUM(new_deaths)/SUM(new_cases))*100,2) AS death_per_cases
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is not null
+    --location LIKE '%States' --Like allows to use '%' to find values containing 'States'
+GROUP BY 
+    date
+ORDER BY 
+    1,2
+
+
+---- global total ---
+SELECT 
+    --date,
+    SUM(new_cases) AS total_new_cases,
+    SUM(new_deaths) AS total_new_deaths,
+    round((SUM(new_deaths)/SUM(new_cases))*100,2) AS death_per_cases
+FROM 
+    `portfolio-326009.Covid19.covid_deaths`
+WHERE 
+    continent is not null
+    --location LIKE '%States' --Like allows to use '%' to find values containing 'States'
+--GROUP BY 
+   -- date
+ORDER BY 
+    1,2
+
+
+-- Looking at secon table (covid_vaccinations)
+
+SELECT 
+    *
+FROM 
+    `portfolio-326009.Covid19.covid_vaccinations`
+
+
+--- joining tables by location and date
+
+SELECT 
+    *
+FROM 
+    `portfolio-326009.Covid19.covid_deaths` dea
+JOIN 
+    `portfolio-326009.Covid19.covid_vaccinations` vac
+    ON  
+        dea.location = vac.location
+        and 
+        dea.date = vac.date
+WHERE 
+    dea.continent is not null
+
+-- from join, looking at total population vs vaccination
+
+SELECT 
+    dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+FROM 
+    `portfolio-326009.Covid19.covid_deaths` dea
+JOIN 
+    `portfolio-326009.Covid19.covid_vaccinations` vac
+    ON  
+        dea.location = vac.location
+        and 
+        dea.date = vac.date
+
+WHERE 
+    dea.continent is not null
+ORDER BY 
+    2,3
+
+-- from join adding new vaccinations ---ROLLING COUNT-----
+SELECT 
+    dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+    SUM(vac.new_vaccinations) 
+        OVER (PARTITION BY dea.location
+            order by
+                dea.location,
+                dea.date) AS total_vaccinations
+FROM 
+    `portfolio-326009.Covid19.covid_deaths` dea
+JOIN 
+    `portfolio-326009.Covid19.covid_vaccinations` vac
+    ON  
+        dea.location = vac.location
+        and 
+        dea.date = vac.date
+
+WHERE 
+    dea.continent is not null
+ORDER BY 
+    2,3
+
+----- finding percentange of people vaccinate --- using CTE to use rolling count just created ------
+
+WITH pop_vs_vac AS --(continent, location, date, population, new_vaccinations,total_vaccinations)
+    (
+    SELECT 
+    dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+    SUM(vac.new_vaccinations) 
+        OVER (PARTITION BY dea.location
+            order by
+                dea.location,
+                dea.date) AS total_vaccinations,
+    FROM 
+    `portfolio-326009.Covid19.covid_deaths` dea
+    JOIN 
+    `portfolio-326009.Covid19.covid_vaccinations` vac
+    ON  
+        dea.location = vac.location
+        and 
+        dea.date = vac.date
+    WHERE 
+    dea.continent is not null
+    )
+select 
+    *, round(total_vaccinations/population,2)*100 AS vaccination_percentage
+FROM 
+    pop_vs_vac
+
+-----Same but with TEMP TABLE----
+-----Same but with TEMP TABLE----
+-----Same but with TEMP TABLE----
+
+--deletes previous table created with same name
+DROP TABLE IF EXISTS `Covid19.percent_population_vaccinated`
+
+--creates table 
+CREATE TABLE `Covid19.percent_population_vaccinated`
+(continent string,
+location string,
+date datetime,
+population numeric,
+new_vaccinations numeric,
+total_vaccinations numeric)
+
+--insert data into newly created table
+INSERT INTO `portfolio-326009.Covid19.percent_population_vaccinated`
+        (
+    SELECT 
+    dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+    SUM(vac.new_vaccinations) 
+        OVER (PARTITION BY dea.location
+            order by
+                dea.location,
+                dea.date) AS total_vaccinations,
+    FROM 
+    `portfolio-326009.Covid19.covid_deaths` dea
+    JOIN 
+    `portfolio-326009.Covid19.covid_vaccinations` vac
+    ON  
+        dea.location = vac.location
+        and 
+        dea.date = vac.date
+   WHERE 
+    dea.continent is not null
+    )
+
+--query from new table
+select 
+    *, round(total_vaccinations/population,4)*100 AS vaccination_percentage
+FROM 
+    `portfolio-326009.Covid19.percent_population_vaccinated`
+ORDER BY 
+    2,3
+
+---creating view to storge data for later visualizations ----
+---creating view to storge data for later visualizations ----
+---creating view to storge data for later visualizations ----
+
+DROP VIEW IF EXISTS `Covid19.percent_population_vaccinated`
+
+CREATE VIEW `portfolio-326009.Covid19.percent_population_vaccinated` AS 
+SELECT 
+    dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+    SUM(vac.new_vaccinations) 
+        OVER (PARTITION BY dea.location
+            order by
+                dea.location,
+                dea.date) AS total_vaccinations,
+    FROM 
+    `portfolio-326009.Covid19.covid_deaths` dea
+    JOIN 
+    `portfolio-326009.Covid19.covid_vaccinations` vac
+    ON  
+        dea.location = vac.location
+        and 
+        dea.date = vac.date
+   WHERE 
+    dea.continent is not null
+
+

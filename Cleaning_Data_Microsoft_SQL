@@ -1,0 +1,375 @@
+-----------------------------------------------------------------------------------------------------------------------
+--------------------------------------- Cleaning Data Using Microsoft SQL ---------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
+
+
+
+-- Looking at all the data --
+SELECT
+	*
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+-- Notice multiple NULL values
+
+---------------------------------------------------------------------------------------------------------
+-- Standardize SaleDate (It is on a DateTime format) to YYYY-MM-DD --
+---------------------------------------------------------------------------------------------------------
+
+SELECT
+	SaleDate,
+	CONVERT(Date, SaleDate)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+
+-- not updating -------------------------------------------------------------------
+UPDATE NashvilleHousing
+	SET SaleDate = CONVERT(Date, SaleDate)
+-- not updating --------------------------------------------------------------------
+
+ALTER TABLE 
+	NashvilleHousing
+ADD
+	SaleDateConverted Date;
+UPDATE 
+	NashvilleHousing
+SET 
+	SaleDateConverted = CONVERT(Date, SaleDate)
+
+-- Checking change --
+
+SELECT
+	SaleDateConverted,
+	CONVERT(Date, SaleDate)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+-- Deleting Column created with a typo----
+
+ALTER TABLE 
+	NashvilleHousing
+DROP COLUMN
+	SaleDateCovnverted;
+
+------------------------------------------------------------------------------------------------------------------------
+-- Populating PropertyAddress Data --
+------------------------------------------------------------------------------------------------------------------------
+
+-- Exploring if there are NULL values in PropertyAddress, found 29 rows. --
+SELECT
+	* 
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+WHERE
+	PropertyAddress is null
+
+
+-- Identifying if PropertyAddress can be named using ParcelID --
+SELECT
+	* 
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+ORDER BY
+	ParcelID
+
+
+-- If ParcelID N = ParcelID M and ParcelID N has and Address and ParcelID M does not Then populate PropertyAddress M with PropertyAddress N --
+
+-- Creating self join --
+-- Look where ParcelID are the same but UniqueID is <> --
+-- Confirming if Querie is populating b.PropertyAddress
+
+SELECT
+	a.parcelID,
+	a.PropertyAddress AS aPropertyAddress,
+	b.ParcelID,
+	b.PropertyAddress AS bPropertyAddress
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing a
+JOIN	
+	Portfolio_Tutorial.dbo.NashvilleHousing b
+	ON a.ParcelID = b.ParcelID
+	AND a.[UniqueID ] <> b.[UniqueID ]
+WHERE
+	a.PropertyAddress is null
+
+--
+
+SELECT
+	a.parcelID,
+	a.PropertyAddress AS aPropertyAddress,
+	b.ParcelID,
+	b.PropertyAddress AS bPropertyAddress,
+	ISNULL(a.PropertyAddress, b.PropertyAddress) AS PropertyAddress -- Populating new column with data from bPropertyAddress when aPropertyAddress is null
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing a
+JOIN	
+	Portfolio_Tutorial.dbo.NashvilleHousing b
+	ON a.ParcelID = b.ParcelID
+	AND a.[UniqueID ] <> b.[UniqueID ]
+WHERE
+	a.PropertyAddress is null
+
+-- Updating table with complete PropertyAddress
+
+UPDATE 
+	a
+SET
+	PropertyAddress = ISNULL(a.PropertyAddress, b.PropertyAddress)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing a
+JOIN	
+	Portfolio_Tutorial.dbo.NashvilleHousing b
+	ON a.ParcelID = b.ParcelID
+	AND a.[UniqueID ] <> b.[UniqueID ]
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+-- Breaking out PropertyAddress into individual columns (Street, City) --
+------------------------------------------------------------------------------------------------------------------------------------
+
+-- Exploring PropertyAddress format, and braking it using SUBSTRING and CHARINDEX --
+
+SELECT
+	PropertyAddress
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+-- There is a delimeter ',' before city --
+
+SELECT
+	SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1) AS Address, -- added '-1' so ',' is not in the Address
+	SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) + 1, LEN(PropertyAddress)) AS AddressCity -- Starting at +1 (after the ',' )and going until the end of the string to get the city --
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+-- Altering Table with 2 new columns: Street & City --
+
+ALTER TABLE
+	NashvilleHousing
+ADD
+	PropertyStreet Nvarchar(255);
+UPDATE NashvilleHousing
+	SET 
+		PropertyStreet = SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1)
+
+ALTER TABLE
+	NashvilleHousing
+ADD
+	PropertyCity Nvarchar(255);
+UPDATE NashvilleHousing
+	SET
+		PropertyCity = SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) + 1, LEN(PropertyAddress))
+
+-- Confirming the 2 new columns were added --
+
+SELECT
+	*
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+-- Breaking out OwnerAddress into individual columns (Street, City, State) --
+------------------------------------------------------------------------------------------------------------------------------------
+-- Breaking out OwnerAddress with PARSENAME--
+-- PARSENAME only works with '.', so must change ',' to '.' first by using REPLACE --
+
+SELECT
+	PARSENAME(REPLACE(OwnerAddress, ',', '.'), 3),
+	PARSENAME(REPLACE(OwnerAddress, ',', '.'), 2),
+	PARSENAME(REPLACE(OwnerAddress, ',', '.'), 1)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+
+----- Alter table with new columns for OwnerAddress (OwnerStreet, OwnerCity and OwnerState -----
+
+ALTER TABLE
+	NashvilleHousing
+ADD
+	OwnerStreet Nvarchar(255);    ---- adding new column named 'OwnerStreet'
+UPDATE NashvilleHousing
+	SET 
+		OwnerStreet = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 3)   ---- populating column named 'OwnerStreet'
+
+
+ALTER TABLE
+	NashvilleHousing
+ADD
+	OwnerCity Nvarchar(255);     ---- adding new column named 'OwnerCity'
+UPDATE NashvilleHousing
+	SET
+		OwnerCity = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 2)   ---- populating column named 'OwnerCity'
+
+
+ALTER TABLE
+	NashvilleHousing
+ADD
+	OwnerState Nvarchar(255);    ---- adding new column named 'OwnerState'
+UPDATE NashvilleHousing
+	SET
+		OwnerState = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 1)  ---- populating column named 'OwnerState'
+
+
+-- Confirming the 3 new columns were added --
+
+SELECT
+	*
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------Changing 'Y' to 'Yes' and 'N' to 'No'---------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Looking at SoldAsVacant column --
+
+SELECT
+	DISTINCT(SoldAsVacant),
+	COUNT(SoldAsVacant)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+GROUP BY
+	SoldAsVacant
+ORDER BY 2 DESC
+
+-- Queries has 4 results: 'N', 'No', 'Y' and 'Yes' ---
+
+SELECT
+	SoldAsVacant,
+	CASE WHEN 
+		SoldAsVacant = 'Y' THEN 'Yes'
+		 WHEN 
+		SoldAsVacant = 'N' THEN 'No'
+		 ELSE 
+		SoldAsVacant
+		 END
+	FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+GROUP BY
+	SoldAsVacant
+
+-- Updating table --
+
+UPDATE NashvilleHousing
+	SET SoldAsVacant = CASE WHEN 
+						SoldAsVacant = 'Y' THEN 'Yes'
+							WHEN 
+						SoldAsVacant = 'N' THEN 'No'
+							ELSE 
+						SoldAsVacant
+							END
+
+-- Confirming update --
+
+SELECT
+	DISTINCT(SoldAsVacant),
+	COUNT(SoldAsVacant)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+GROUP BY
+	SoldAsVacant
+ORDER BY 2 DESC
+
+---------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------Removing Duplicates --------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------
+
+-- First, I identify duplicated rows by UniqueID-- 
+
+SELECT
+	DISTINCT(UniqueID),
+	COUNT(UniqueID)
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+GROUP BY
+	UniqueID
+ORDER BY 2 DESC
+
+-- No UniqueID is duplicated, thus partitioning by foreign keys --
+
+
+SELECT
+	*,
+	ROW_NUMBER() OVER (
+	PARTITION BY ParcelID,
+				PropertyAddress,
+				SalePrice,
+				SaleDate,
+				LegalReference
+				ORDER BY
+					UniqueID) row_num
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+--ORDER BY row_num DESC -- to confirm there are duplicates with repeated infomration in multiple columns ---
+ORDER BY
+	ParcelID
+
+-------------------------------------- Creating Temp Table (CTE) -------------------------
+
+WITH
+	RowNumCTE AS(
+	SELECT *,
+		ROW_NUMBER() OVER (
+		PARTITION BY ParcelID,
+				PropertyAddress,
+				SalePrice,
+				SaleDate,
+				LegalReference
+				ORDER BY
+					UniqueID) row_num
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+					)
+
+DELETE
+FROM
+	RowNumCTE
+WHERE
+	row_num > 1
+
+--------------------------------------- Checking if there are duplicates remaining -----------------------------
+
+WITH
+	RowNumCTE AS(
+	SELECT *,
+		ROW_NUMBER() OVER (
+		PARTITION BY ParcelID,
+				PropertyAddress,
+				SalePrice,
+				SaleDate,
+				LegalReference
+				ORDER BY
+					UniqueID) row_num
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+					)
+SELECT *
+FROM
+	RowNumCTE
+WHERE
+	row_num > 1
+ORDER BY PropertyAddress
+
+
+---------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------Deleting unused columns-----------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------
+
+--- Viewing columns to determine which one I will delete ---
+SELECT
+	*
+FROM
+	Portfolio_Tutorial.dbo.NashvilleHousing
+
+
+
+ALTER TABLE 
+	NashvilleHousing
+DROP COLUMN
+	PropertyAddress,
+	SaleDate,
+	OwnerAddress,
+	TaxDistrict;
